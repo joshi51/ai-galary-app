@@ -2,11 +2,18 @@
 .gradle/
 build/
 
+# Kotlin compiler/Gradle daemon session cache
+.kotlin/
+
 # Local configuration file (sdk path, etc)
 local.properties
 
+# Signing credentials (if a keystore.properties file is ever added)
+keystore.properties
+
 # Log/OS Files
 *.log
+.DS_Store
 
 # Android Studio generated files and folders
 captures/
