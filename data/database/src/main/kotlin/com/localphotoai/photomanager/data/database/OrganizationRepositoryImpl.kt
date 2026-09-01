@@ -1,5 +1,6 @@
 package com.localphotoai.photomanager.data.database
 
+import androidx.room.withTransaction
 import com.localphotoai.photomanager.data.database.dao.OrganizationDao
 import com.localphotoai.photomanager.data.database.entity.OrganizationOperationEntity
 import com.localphotoai.photomanager.data.database.entity.OrganizationPlanEntity
@@ -14,10 +15,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
 class OrganizationRepositoryImpl @Inject constructor(
+    private val appDatabase: AppDatabase,
     private val organizationDao: OrganizationDao,
 ) : OrganizationPlanRepository {
 
-    override suspend fun savePlan(plan: OrganizationPlan): OrganizationPlan {
+    /** Wrapped in a transaction so a crash between the two inserts can never leave an
+     * `organization_plans` row with zero operations — a real, previously-possible inconsistency
+     * this review pass found and fixed (see ARCHITECTURE.md's transaction-safety note). */
+    override suspend fun savePlan(plan: OrganizationPlan): OrganizationPlan = appDatabase.withTransaction {
         val planId = organizationDao.insertPlan(
             OrganizationPlanEntity(
                 requestText = plan.requestText,
@@ -28,7 +33,7 @@ class OrganizationRepositoryImpl @Inject constructor(
         )
         val operationIds = organizationDao.insertOperations(plan.operations.map { it.toEntity(planId) })
         val savedOperations = plan.operations.zip(operationIds) { op, id -> op.copy(id = id) }
-        return plan.copy(id = planId, operations = savedOperations)
+        plan.copy(id = planId, operations = savedOperations)
     }
 
     override suspend fun fetchPlan(planId: Long): OrganizationPlan? {

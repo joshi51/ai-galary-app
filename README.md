@@ -1,25 +1,54 @@
 # Local AI Photo Intelligence & Manager
 
-A privacy-first, AI-powered Android photo manager. All photo analysis and AI
-processing — face detection, embeddings, clustering, duplicate detection,
-natural-language search, and AI-assisted organization — runs entirely
-on-device. No mandatory cloud AI APIs (no OpenAI, Anthropic, Gemini, AWS AI,
-Firebase AI). The app is designed to work fully offline once its local
-models are downloaded.
+A privacy-first Android photo manager built as a working example of **on-device AI**: computer
+vision (face detection/recognition), vector search, a local LLM doing agentic tool-calling, and a
+software architecture built around the constraint that none of it may leave the device.
+
+Photo indexing, face detection, face-embedding generation, clustering, duplicate/similarity
+detection, natural-language search, and AI-assisted photo organization all run entirely on-device —
+no mandatory cloud AI APIs (no OpenAI, Anthropic, Gemini, AWS AI, Firebase AI), and no analytics or
+telemetry SDK of any kind. See [PRIVACY.md](docs/PRIVACY.md) for exactly what was verified, not just
+designed, to stay on-device.
+
+**What this project demonstrates, concretely:**
+
+- **On-device computer vision** — ML Kit face detection → TFLite (FaceNet) face embeddings →
+  greedy nearest-centroid clustering into people, with user-correctable merge/split/mark-incorrect
+  actions and no automatic name assignment.
+- **On-device vector search** — brute-force cosine similarity over Room-stored embedding vectors,
+  used for both face clustering and visual-similarity/near-duplicate photo grouping, with the
+  scaling tradeoff (and its documented upgrade path) made explicit rather than hidden.
+- **A local LLM doing agentic tool-calling, not open-ended generation** — llama.cpp running
+  Llama-3.2-1B-Instruct in-process via JNI, constrained by a GBNF grammar to five validated tool
+  schemas (`:tools`), with the LLM never given direct filesystem or database access — only
+  validated tool calls, and every destructive filesystem operation gated behind the OS's own
+  write-consent dialog.
+- **Privacy-first architecture as a load-bearing constraint, not a marketing line** — verified
+  (not assumed) in [PRIVACY.md](docs/PRIVACY.md): every network call site in the codebase, every
+  manifest permission, every logging call site that could leak a photo identifier.
 
 ## Status
 
-Currently **Phase 1** of 14 (basic Android app shell — no AI functionality
-yet). See [docs/superpowers/plans/2026-08-29-local-ai-photo-manager.md](docs/superpowers/plans/2026-08-29-local-ai-photo-manager.md)
-for the full phase-by-phase roadmap and what's done so far.
+All 13 planned phases are complete — indexing, face detection/recognition, deterministic and
+natural-language search, duplicate/similarity detection, AI-assisted organization with undo,
+privacy hardening, on-device performance profiling, and this final engineering review. See
+[docs/superpowers/plans/2026-08-29-local-ai-photo-manager.md](docs/superpowers/plans/2026-08-29-local-ai-photo-manager.md)
+for the full phase-by-phase record — what was built, how it was verified, and every known
+limitation, per phase, including negative findings (things tried and reverted after verification).
 
 ## Documentation
 
 | Doc | What's in it |
 |---|---|
-| [docs/superpowers/specs/2026-08-29-local-ai-photo-manager-design.md](docs/superpowers/specs/2026-08-29-local-ai-photo-manager-design.md) | Project spec: goals, constraints, non-negotiable principles |
-| [docs/superpowers/plans/2026-08-29-local-ai-photo-manager.md](docs/superpowers/plans/2026-08-29-local-ai-photo-manager.md) | Phase-by-phase implementation plan and progress |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Full system design: module structure, data flows, DB schema, background processing, ML/security architecture, toolchain notes |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Full system design: module structure, data flows, DB schema, background processing, ML/security architecture |
+| [ENGINEERING_REVIEW.md](docs/ENGINEERING_REVIEW.md) | Senior-level review across 21 dimensions: what was found, severity, what was fixed, what's deferred and why, future roadmap |
+| [PERFORMANCE.md](docs/PERFORMANCE.md) | Real, measured on-device benchmark numbers — indexing/detection/embedding throughput, memory, search/LLM latency, a real bug found and fixed, an optimization tried and reverted |
+| [PRIVACY.md](docs/PRIVACY.md) | The full privacy audit: what never leaves the device, what does (and only that), permissions, logging, a leak found and fixed |
+| [TESTING.md](docs/TESTING.md) | What's unit tested and why, what isn't and how it's verified instead, current coverage |
+| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Module graph, coding conventions, how to add a migration/tool/feature safely |
+| [MODEL_SETUP.md](docs/MODEL_SETUP.md) | The three models this app uses, their provenance/licensing, how to download or manually install them |
+| [docs/superpowers/specs/2026-08-29-local-ai-photo-manager-design.md](docs/superpowers/specs/2026-08-29-local-ai-photo-manager-design.md) | Original project spec: goals, constraints, non-negotiable principles |
+| [docs/superpowers/plans/2026-08-29-local-ai-photo-manager.md](docs/superpowers/plans/2026-08-29-local-ai-photo-manager.md) | Phase-by-phase implementation plan and the full build/verify record for every phase |
 | [CLAUDE.md](CLAUDE.md) | Project-specific working preferences (commit policy, testing scope) |
 
 ## Tech stack
@@ -37,18 +66,25 @@ for the full phase-by-phase roadmap and what's done so far.
 app/                  App entry point: Application/Activity, DI wiring, NavHost, theme
 core/common/          Logger, AppResult/AppError, AppDispatchers — pure Kotlin, no Android deps
 core/ui/              Shared Compose theme, components, navigation destinations
-domain/               Use cases, domain models, repository interfaces — pure Kotlin
-data/preferences/     DataStore-backed settings repository implementation
-feature/home/         Home screen
-feature/photos/       Photos screen (indexing arrives in Phase 2)
-feature/people/       People screen (face detection/clustering arrive in Phases 3–5)
-feature/search/       Search screen (structured search in Phase 6, NL search in Phase 8)
-feature/settings/     Settings screen (theme preference, privacy info)
+domain/               Use cases, domain models, repository interfaces — pure Kotlin, no Android deps
+data/preferences/     DataStore-backed settings repository
+data/database/        Room: entities, DAOs, AppDatabase + migrations, repository implementations
+data/media/           MediaStore access, WorkManager workers/schedulers, pipeline chaining
+ml/vision/            ML Kit face detection
+ml/embeddings/        TFLite face-embedding (FaceNet) + similarity-embedding (MobileNetV3), model downloaders
+llm/orchestration/     Plain Kotlin: GBNF grammar, tool-call parsing, retry/fallback loop
+llm/runtime/           llama.cpp JNI bridge, model download/lifecycle
+tools/                 The LLM's only interface to the app: five validated Tool implementations
+fsops/                 The only module with real filesystem write access: plan validation + execution + undo
+feature/home/          Home screen
+feature/photos/        Photos, indexing progress, duplicate/similar-photo review
+feature/people/        People, face clustering review (name/merge/split/mark-incorrect)
+feature/search/        Deterministic + natural-language search, AI organization review, operation history/undo
+feature/settings/       Theme, AI model downloads, Privacy section, diagnostics screen
 ```
 
-Module boundaries follow [ARCHITECTURE.md](docs/ARCHITECTURE.md) §11; modules not
-yet needed (`:data:media`, `:ml:*`, `:llm:*`, `:tools`, `:fsops`) are added in
-the phases that introduce them.
+Module boundaries and the reasoning behind them are in
+[ARCHITECTURE.md](docs/ARCHITECTURE.md) §11 and [DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Prerequisites
 
@@ -85,17 +121,17 @@ Run all unit tests across every module:
 ./gradlew test
 ```
 
-Run tests for a specific module (e.g. the domain layer, where most business
-logic lives — see [CLAUDE.md](CLAUDE.md) for this project's testing scope):
+Run the four modules with real test suites (166 tests total — domain use cases/algorithms, tool
+validation, LLM orchestration, filesystem-operation validation):
 
 ```bash
-./gradlew :domain:test
-./gradlew :core:common:test
+./gradlew :domain:test :tools:test :llm:orchestration:test :fsops:test
 ```
 
-There is no instrumented/UI test suite by design — this project only unit
-tests business logic (domain use cases, clustering/matching logic, tool and
-filesystem-operation validation), not UI, ViewModels, or DI wiring.
+There is no instrumented/UI test suite by design — this project only unit tests business logic
+(domain use cases, clustering/matching logic, tool and filesystem-operation validation), not UI,
+ViewModels, DI wiring, or Room DAOs. See [TESTING.md](docs/TESTING.md) for the full breakdown, the
+philosophy behind the split, and a real bug this scope let through as an honest cost example.
 
 ## Run
 
@@ -238,9 +274,45 @@ relevant starting around Phase 3, once background ML work exists to profile.
 ./gradlew :app:dependencies  # dependency tree for a specific module
 ```
 
+## Local model setup
+
+Face detection needs no download (it's provided by Google Play Services on the device). Face
+embeddings and natural-language search each need one model, downloaded once from Settings, with a
+pinned-hash integrity check before it's trusted. See [MODEL_SETUP.md](docs/MODEL_SETUP.md) for
+sizes, licenses, provenance, and how to place a model manually (e.g. for offline development).
+
+## Performance
+
+Real, on-device measured numbers (not projections) live in [PERFORMANCE.md](docs/PERFORMANCE.md) —
+indexing/face-detection/embedding throughput, memory, search and LLM latency, plus one real bug
+found and fixed and one optimization tried and honestly reverted after live verification showed it
+did nothing. Headline numbers from the most recent (3,322-photo, realistic-resolution) profiling
+pass: indexing ~146 photos/sec, face detection ~10.5 photos/sec, face embeddings ~7/sec, deterministic
+search 1–4ms, NL search 16s (warm), 199MB peak measured memory, zero ANRs under a deliberate
+background-work stress test.
+
 ## Privacy
 
-No photo, face, embedding, or model data ever leaves the device, and no
-`INTERNET` permission is used outside an explicit, user-initiated model
-download. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) §6 and the in-app Privacy
-section (Settings, from Phase 11 onward) for details.
+No photo, face embedding, or model data ever leaves the device, and no `INTERNET` permission is
+used outside the two explicit, user-initiated model downloads in Settings. This is verified, not
+just designed — see [PRIVACY.md](docs/PRIVACY.md) for the full audit (every network call site,
+every permission, every logging call site checked for photo-identifying content, including a real
+leak found and fixed), plus the in-app Privacy section (Settings → Privacy) and its Diagnostics
+screen.
+
+## Known limitations
+
+The single most important one: **face/embedding/clustering accuracy has never been validated
+against a real human face photo**, in any development session — only pipeline mechanics (decode,
+throughput, error handling, resumability) have real verification. Every similarity/clustering
+threshold in the codebase is named, documented, and honestly untuned against real data as a result.
+This — along with every other known limitation (Room migrations have no automated test coverage,
+battery impact is unmeasurable in this project's available environments, tool-selection reliability
+for novel NL phrasings is unverified, and more) — is catalogued with severity ratings in
+[ENGINEERING_REVIEW.md](docs/ENGINEERING_REVIEW.md).
+
+## Roadmap
+
+See [ENGINEERING_REVIEW.md](docs/ENGINEERING_REVIEW.md#future-roadmap) for the full, prioritized
+list. The single highest-value next step: validating against a real (consented) photo library, to
+finally measure — and recalibrate — recognition accuracy rather than just pipeline mechanics.

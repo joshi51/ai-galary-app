@@ -1,5 +1,6 @@
 package com.localphotoai.photomanager.data.database
 
+import androidx.room.withTransaction
 import com.localphotoai.photomanager.data.database.dao.ClusteringStatusDao
 import com.localphotoai.photomanager.data.database.dao.EmbeddingDao
 import com.localphotoai.photomanager.data.database.dao.FaceDao
@@ -25,7 +26,17 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+/**
+ * Every mutation here touches at least two related rows (a person's `centroidSum`/`memberCount`
+ * plus one or more `person_faces` rows, sometimes a person insert/delete too) — each one is
+ * wrapped in [AppDatabase.withTransaction] so a process death or crash mid-mutation can never
+ * leave a face reassigned without its person's stats updated, or a person deleted while a face
+ * still points at it. Room rolls the whole transaction back on any exception, so a partial write
+ * is never observable — the previous, non-transactional version could commit a `person_faces`
+ * change and then die before the matching `people` row update.
+ */
 class PersonRepositoryImpl @Inject constructor(
+    private val appDatabase: AppDatabase,
     private val personDao: PersonDao,
     private val clusteringStatusDao: ClusteringStatusDao,
     private val embeddingDao: EmbeddingDao,
@@ -62,24 +73,25 @@ class PersonRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun assignToExistingPerson(outcome: ClusterOutcome.AssignedToExisting, vector: FloatArray) {
-        personDao.upsertPersonFace(PersonFaceEntity(outcome.faceId, outcome.personId, outcome.confidence))
-        val person = personDao.getPerson(outcome.personId) ?: return
-        val updatedSum = addVector(bytesToFloatArray(person.centroidSum), vector)
-        personDao.updatePerson(
-            person.copy(
-                centroidSum = floatArrayToBytes(updatedSum),
-                memberCount = person.memberCount + 1,
-                representativeFaceId = person.representativeFaceId ?: outcome.faceId,
-            ),
-        )
-    }
+    private suspend fun assignToExistingPerson(outcome: ClusterOutcome.AssignedToExisting, vector: FloatArray) =
+        appDatabase.withTransaction {
+            personDao.upsertPersonFace(PersonFaceEntity(outcome.faceId, outcome.personId, outcome.confidence))
+            val person = personDao.getPerson(outcome.personId) ?: return@withTransaction
+            val updatedSum = addVector(bytesToFloatArray(person.centroidSum), vector)
+            personDao.updatePerson(
+                person.copy(
+                    centroidSum = floatArrayToBytes(updatedSum),
+                    memberCount = person.memberCount + 1,
+                    representativeFaceId = person.representativeFaceId ?: outcome.faceId,
+                ),
+            )
+        }
 
     private suspend fun createPersonFromCluster(
         faceIds: List<Long>,
         vectorsByFaceId: Map<Long, FloatArray>,
         confidenceByFaceId: Map<Long, Float>,
-    ) {
+    ) = appDatabase.withTransaction {
         var sum = FloatArray(vectorsByFaceId.getValue(faceIds.first()).size)
         for (faceId in faceIds) sum = addVector(sum, vectorsByFaceId.getValue(faceId))
 
@@ -102,9 +114,9 @@ class PersonRepositoryImpl @Inject constructor(
         personDao.setName(personId, name?.trim()?.ifBlank { null })
     }
 
-    override suspend fun mergePersons(sourcePersonId: Long, targetPersonId: Long) {
-        val source = personDao.getPerson(sourcePersonId) ?: return
-        val target = personDao.getPerson(targetPersonId) ?: return
+    override suspend fun mergePersons(sourcePersonId: Long, targetPersonId: Long) = appDatabase.withTransaction {
+        val source = personDao.getPerson(sourcePersonId) ?: return@withTransaction
+        val target = personDao.getPerson(targetPersonId) ?: return@withTransaction
         val outcome = planMerge(sourcePersonId, source.name, targetPersonId, target.name)
 
         personDao.reassignAllFaces(sourcePersonId, targetPersonId)
@@ -120,7 +132,7 @@ class PersonRepositoryImpl @Inject constructor(
         personDao.deletePerson(source)
     }
 
-    override suspend fun splitFaceIntoNewPerson(faceId: Long): Long {
+    override suspend fun splitFaceIntoNewPerson(faceId: Long): Long = appDatabase.withTransaction {
         val personFace = personDao.getPersonFace(faceId) ?: error("Face $faceId is not currently assigned to a person")
         val originalPerson = personDao.getPerson(personFace.personId)
             ?: error("Person ${personFace.personId} not found")
@@ -139,13 +151,13 @@ class PersonRepositoryImpl @Inject constructor(
         )
         personDao.upsertPersonFace(PersonFaceEntity(faceId, newPersonId, clusterConfidence = 1f))
         removeFaceFromPerson(originalPerson, faceId, vector)
-        return newPersonId
+        newPersonId
     }
 
-    override suspend fun markFaceIncorrect(faceId: Long) {
+    override suspend fun markFaceIncorrect(faceId: Long) = appDatabase.withTransaction {
         faceDao.markIncorrect(faceId)
-        val personFace = personDao.getPersonFace(faceId) ?: return
-        val person = personDao.getPerson(personFace.personId) ?: return
+        val personFace = personDao.getPersonFace(faceId) ?: return@withTransaction
+        val person = personDao.getPerson(personFace.personId) ?: return@withTransaction
         val vectorBytes = embeddingDao.getVector(faceId)
         personDao.deletePersonFace(faceId)
         if (vectorBytes != null) {

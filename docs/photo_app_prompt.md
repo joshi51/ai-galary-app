@@ -4,7 +4,7 @@ Project: Local AI Photo Intelligence & Manager
 
 > Progress tracking: each step below is marked against the corresponding phase's `Status` in
 > [2026-08-29-local-ai-photo-manager.md](superpowers/plans/2026-08-29-local-ai-photo-manager.md).
-> Steps 0–13 are done; Step 14 onward have not been run yet.
+> Steps 0–14 are done — the full project is complete.
 
 Step 0 — Master project instruction ✅ Done (Phase 0)
 
@@ -719,7 +719,7 @@ The application must remain responsive while background AI processing occurs.
 Do not optimize blindly. Profile first, then optimize based on measurements.
 ```
 
-Step 14 — Final portfolio-grade review
+Step 14 — Final portfolio-grade review ✅ Done (Phase 13)
 
 ```jsx
 Finally, give Claude Code this.
