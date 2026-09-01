@@ -17,6 +17,7 @@ import com.localphotoai.photomanager.data.database.dao.SearchDao
 import com.localphotoai.photomanager.data.database.dao.SimilarGroupDao
 import com.localphotoai.photomanager.data.database.dao.SimilarityEmbeddingDao
 import com.localphotoai.photomanager.data.database.dao.AlbumDao
+import com.localphotoai.photomanager.data.database.dao.OperationHistoryDao
 import com.localphotoai.photomanager.data.database.dao.OrganizationDao
 import com.localphotoai.photomanager.data.database.dao.StatisticsDao
 import com.localphotoai.photomanager.data.database.entity.AlbumEntity
@@ -29,6 +30,7 @@ import com.localphotoai.photomanager.data.database.entity.EmbeddingStatusEntity
 import com.localphotoai.photomanager.data.database.entity.FaceDetectionStatusEntity
 import com.localphotoai.photomanager.data.database.entity.FaceEntity
 import com.localphotoai.photomanager.data.database.entity.IndexingStatusEntity
+import com.localphotoai.photomanager.data.database.entity.OperationRecordEntity
 import com.localphotoai.photomanager.data.database.entity.OrganizationOperationEntity
 import com.localphotoai.photomanager.data.database.entity.OrganizationPlanEntity
 import com.localphotoai.photomanager.data.database.entity.PersonEntity
@@ -58,8 +60,9 @@ import com.localphotoai.photomanager.data.database.entity.SimilarityEmbeddingEnt
         AlbumPhotoEntity::class,
         OrganizationPlanEntity::class,
         OrganizationOperationEntity::class,
+        OperationRecordEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -78,6 +81,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun similarityEmbeddingDao(): SimilarityEmbeddingDao
     abstract fun albumDao(): AlbumDao
     abstract fun organizationDao(): OrganizationDao
+    abstract fun operationHistoryDao(): OperationHistoryDao
 }
 
 /** Phase 3: adds face detection — new `faces`/`face_detection_status` tables, two new `photos` columns. */
@@ -324,5 +328,36 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
             """.trimIndent(),
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS index_organization_operations_planId ON organization_operations(planId)")
+    }
+}
+
+/** Phase 10: adds the `createdAlbumId` column organization history/undo needs to reverse a
+ *  CREATE_ALBUM operation, plus the permanent `operation_records` history/undo table. */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE organization_operations ADD COLUMN createdAlbumId INTEGER")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS operation_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                batchId INTEGER NOT NULL,
+                planId INTEGER NOT NULL,
+                operationId INTEGER NOT NULL,
+                timestampMs INTEGER NOT NULL,
+                opType TEXT NOT NULL,
+                source TEXT,
+                destination TEXT NOT NULL,
+                previousDisplayName TEXT,
+                previousRelativePath TEXT,
+                createdUri TEXT,
+                createdAlbumId INTEGER,
+                result TEXT NOT NULL,
+                failureReason TEXT,
+                reversible INTEGER NOT NULL,
+                undone INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_operation_records_batchId ON operation_records(batchId)")
     }
 }

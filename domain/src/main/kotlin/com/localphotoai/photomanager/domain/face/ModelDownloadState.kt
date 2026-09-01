@@ -17,4 +17,8 @@ sealed class ModelDownloadState {
 interface EmbeddingModelDownloader {
     fun observeDownloadState(): Flow<ModelDownloadState>
     suspend fun downloadModel()
+
+    /** The face-embedding model's own version number (bumped whenever the model file itself
+     * changes) — surfaced on Phase 11's diagnostics screen, independent of download state. */
+    val modelVersion: Int
 }

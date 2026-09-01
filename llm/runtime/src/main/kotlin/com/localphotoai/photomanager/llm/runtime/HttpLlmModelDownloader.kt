@@ -52,6 +52,8 @@ class HttpLlmModelDownloader @Inject constructor(
         if (modelFileStore.isModelPresent()) LlmModelDownloadState.Ready else LlmModelDownloadState.NotDownloaded,
     )
 
+    override val modelVersion: Int = Llama32ModelSpec.MODEL_VERSION
+
     override fun observeDownloadState(): StateFlow<LlmModelDownloadState> = state
 
     override suspend fun downloadModel() {

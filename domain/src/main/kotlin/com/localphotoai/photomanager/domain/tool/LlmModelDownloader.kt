@@ -12,4 +12,7 @@ sealed class LlmModelDownloadState {
 interface LlmModelDownloader {
     fun observeDownloadState(): StateFlow<LlmModelDownloadState>
     suspend fun downloadModel()
+
+    /** The search-assistant LLM's own version number — surfaced on Phase 11's diagnostics screen. */
+    val modelVersion: Int
 }

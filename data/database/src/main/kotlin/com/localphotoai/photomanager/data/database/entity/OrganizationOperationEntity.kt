@@ -25,4 +25,5 @@ data class OrganizationOperationEntity(
     val reviewStatus: String,
     val executionResult: String?,
     val executionError: String?,
+    val createdAlbumId: Long? = null,
 )

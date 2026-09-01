@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,9 +60,24 @@ fun SearchScreen(
     val llmModelDownloadState by viewModel.llmModelDownloadState.collectAsState()
     val nlSearchUiState by viewModel.nlSearchUiState.collectAsState()
 
+    var showHistory by remember { mutableStateOf(false) }
+    if (showHistory) {
+        OrganizationHistoryScreen(onBack = { showHistory = false }, modifier = modifier)
+        return
+    }
+
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("Search") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Search") },
+                actions = {
+                    IconButton(onClick = { showHistory = true }) {
+                        Icon(Icons.Default.History, contentDescription = "Organization history")
+                    }
+                },
+            )
+        },
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             NlSearchBar(

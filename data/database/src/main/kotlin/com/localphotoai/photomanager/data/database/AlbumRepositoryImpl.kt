@@ -14,4 +14,6 @@ class AlbumRepositoryImpl @Inject constructor(
         albumDao.insertAlbumPhotos(photoIds.map { AlbumPhotoEntity(albumId = albumId, photoId = it) })
         return albumId
     }
+
+    override suspend fun deleteAlbum(albumId: Long) = albumDao.deleteAlbum(albumId)
 }

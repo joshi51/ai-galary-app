@@ -9,9 +9,12 @@ import androidx.lifecycle.viewModelScope
 import com.localphotoai.photomanager.core.common.AppResult
 import com.localphotoai.photomanager.domain.organization.ConfirmOrganizationPlanUseCase
 import com.localphotoai.photomanager.domain.organization.OperationDecision
+import com.localphotoai.photomanager.domain.organization.OperationExecutionOutcome
+import com.localphotoai.photomanager.domain.organization.OperationPreviousState
 import com.localphotoai.photomanager.domain.organization.OperationType
 import com.localphotoai.photomanager.domain.organization.OrganizationOperation
 import com.localphotoai.photomanager.domain.organization.OrganizationPlan
+import com.localphotoai.photomanager.domain.organization.RecordOrganizationExecutionUseCase
 import com.localphotoai.photomanager.domain.organization.ReviewStatus
 import com.localphotoai.photomanager.fsops.MediaStoreWriter
 import com.localphotoai.photomanager.fsops.OperationExecutionResult
@@ -43,6 +46,7 @@ sealed class ExecutionUiState {
 @HiltViewModel
 class OrganizationReviewViewModel @Inject constructor(
     private val confirmOrganizationPlanUseCase: ConfirmOrganizationPlanUseCase,
+    private val recordOrganizationExecutionUseCase: RecordOrganizationExecutionUseCase,
     private val planExecutor: PlanExecutor,
     private val mediaStoreWriter: MediaStoreWriter,
 ) : ViewModel() {
@@ -54,6 +58,7 @@ class OrganizationReviewViewModel @Inject constructor(
     val execution: StateFlow<ExecutionUiState> = executionState.asStateFlow()
 
     private var planId: Long = 0
+    private var executingPlan: OrganizationPlan? = null
     private val pendingQueue = ArrayDeque<OrganizationOperation>()
     private val collectedResults = mutableListOf<OperationExecutionResult>()
 
@@ -102,6 +107,7 @@ class OrganizationReviewViewModel @Inject constructor(
 
             when (val confirmed = confirmOrganizationPlanUseCase.confirm(planId, decisions)) {
                 is AppResult.Success -> {
+                    executingPlan = confirmed.value
                     pendingQueue.clear()
                     pendingQueue.addAll(
                         confirmed.value.operations.filter {
@@ -136,14 +142,22 @@ class OrganizationReviewViewModel @Inject constructor(
     private fun processNext() {
         val operation = pendingQueue.removeFirstOrNull()
         if (operation == null) {
-            executionState.value = ExecutionUiState.Done(collectedResults.toList())
+            val results = collectedResults.toList()
+            executionState.value = ExecutionUiState.Done(results)
+            persistHistory(results)
             return
         }
         when {
             operation.opType == OperationType.CREATE_ALBUM -> {
                 // ConfirmOrganizationPlanUseCase already created the album (Task 5) — record a
-                // synthetic success rather than re-creating it here.
-                collectedResults += OperationExecutionResult(operation.id, success = true)
+                // synthetic success rather than re-creating it here, but still carry the created
+                // album's id forward so it can be reversed by "Undo last organization" (Phase 10).
+                collectedResults += OperationExecutionResult(
+                    operation.id,
+                    success = true,
+                    previousState = OperationPreviousState(createdAlbumId = operation.createdAlbumId),
+                    reversible = operation.createdAlbumId != null,
+                )
                 processNext()
             }
             operation.opType in setOf(OperationType.MOVE, OperationType.RENAME) && !mediaStoreWriter.isPreApi30() -> {
@@ -160,5 +174,28 @@ class OrganizationReviewViewModel @Inject constructor(
     private fun uriForOperation(operation: OrganizationOperation): Uri {
         val photoId = requireNotNull(operation.source).substringAfterLast("/").toLong()
         return ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, photoId)
+    }
+
+    /** Writes one permanent history record per executed operation, whether it succeeded or
+     * failed — a 20-operation batch with 2 failures is recorded as 18 successes and 2 failures,
+     * never as one blanket success, per Phase 10's partial-failure requirement. Runs after
+     * [executionState] is already [ExecutionUiState.Done] so the UI reflects the real result
+     * immediately, without waiting on the (Room) write. */
+    private fun persistHistory(results: List<OperationExecutionResult>) {
+        val plan = executingPlan ?: return
+        viewModelScope.launch {
+            recordOrganizationExecutionUseCase.record(
+                plan,
+                results.map {
+                    OperationExecutionOutcome(
+                        operationId = it.operationId,
+                        success = it.success,
+                        error = it.error,
+                        previousState = it.previousState,
+                        reversible = it.reversible,
+                    )
+                },
+            )
+        }
     }
 }

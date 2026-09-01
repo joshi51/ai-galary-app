@@ -32,6 +32,8 @@ class HttpModelDownloader @Inject constructor(
         if (modelFileStore.isModelPresent()) ModelDownloadState.Ready else ModelDownloadState.NotDownloaded,
     )
 
+    override val modelVersion: Int = FaceNetModelSpec.MODEL_VERSION
+
     override fun observeDownloadState(): StateFlow<ModelDownloadState> = state
 
     override suspend fun downloadModel() {

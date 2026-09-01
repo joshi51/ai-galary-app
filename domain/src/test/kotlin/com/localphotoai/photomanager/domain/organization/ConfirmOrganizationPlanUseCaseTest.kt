@@ -25,6 +25,7 @@ private class ConfirmFakeAlbumRepository : AlbumRepository {
         created = name to photoIds
         return 42L
     }
+    override suspend fun deleteAlbum(albumId: Long) {}
 }
 
 private fun testOperation(id: Long, opType: OperationType = OperationType.MOVE, memberPhotoIds: List<Long> = emptyList()) =
@@ -61,6 +62,7 @@ class ConfirmOrganizationPlanUseCaseTest {
 
         assertTrue(result is AppResult.Success)
         assertEquals("Goa Trip" to listOf(1L, 3L), albumRepository.created)
+        assertEquals(42L, planRepository.updated.single().createdAlbumId)
     }
 
     @Test

@@ -15,6 +15,7 @@ import com.localphotoai.photomanager.data.database.dao.SearchDao
 import com.localphotoai.photomanager.data.database.dao.SimilarGroupDao
 import com.localphotoai.photomanager.data.database.dao.SimilarityEmbeddingDao
 import com.localphotoai.photomanager.data.database.dao.AlbumDao
+import com.localphotoai.photomanager.data.database.dao.OperationHistoryDao
 import com.localphotoai.photomanager.data.database.dao.OrganizationDao
 import com.localphotoai.photomanager.data.database.dao.StatisticsDao
 import dagger.Module
@@ -34,7 +35,9 @@ object DatabaseModule {
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(
+                MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+            )
             .build()
 
     @Provides
@@ -82,4 +85,7 @@ object DatabaseModule {
 
     @Provides
     fun provideOrganizationDao(database: AppDatabase): OrganizationDao = database.organizationDao()
+
+    @Provides
+    fun provideOperationHistoryDao(database: AppDatabase): OperationHistoryDao = database.operationHistoryDao()
 }

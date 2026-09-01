@@ -1,12 +1,16 @@
 package com.localphotoai.photomanager.data.database
 
 import com.localphotoai.photomanager.core.common.Logger
+import com.localphotoai.photomanager.domain.diagnostics.DatabaseDiagnosticsRepository
 import com.localphotoai.photomanager.domain.face.FaceEmbeddingRepository
 import com.localphotoai.photomanager.domain.face.FaceRepository
 import com.localphotoai.photomanager.domain.organization.AlbumRepository
 import com.localphotoai.photomanager.domain.organization.BuildOrganizationPlanUseCase
 import com.localphotoai.photomanager.domain.organization.ConfirmOrganizationPlanUseCase
+import com.localphotoai.photomanager.domain.organization.GetOperationHistoryUseCase
+import com.localphotoai.photomanager.domain.organization.OperationHistoryRepository
 import com.localphotoai.photomanager.domain.organization.OrganizationPlanRepository
+import com.localphotoai.photomanager.domain.organization.RecordOrganizationExecutionUseCase
 import com.localphotoai.photomanager.domain.person.PersonRepository
 import com.localphotoai.photomanager.domain.photo.GetPhotoMetadataUseCase
 import com.localphotoai.photomanager.domain.photo.PhotoRepository
@@ -65,6 +69,14 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindAlbumRepository(impl: AlbumRepositoryImpl): AlbumRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindOperationHistoryRepository(impl: OperationHistoryRepositoryImpl): OperationHistoryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDatabaseDiagnosticsRepository(impl: DatabaseDiagnosticsRepositoryImpl): DatabaseDiagnosticsRepository
+
     companion object {
 
         @Provides
@@ -121,5 +133,14 @@ abstract class RepositoryModule {
             repository: PhotoGroupRepository,
             logger: Logger,
         ): GroupVisuallySimilarPhotosUseCase = GroupVisuallySimilarPhotosUseCase(repository, logger)
+
+        @Provides
+        fun provideRecordOrganizationExecutionUseCase(
+            repository: OperationHistoryRepository,
+        ): RecordOrganizationExecutionUseCase = RecordOrganizationExecutionUseCase(repository)
+
+        @Provides
+        fun provideGetOperationHistoryUseCase(repository: OperationHistoryRepository): GetOperationHistoryUseCase =
+            GetOperationHistoryUseCase(repository)
     }
 }

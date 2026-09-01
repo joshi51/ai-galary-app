@@ -4,7 +4,7 @@ Project: Local AI Photo Intelligence & Manager
 
 > Progress tracking: each step below is marked against the corresponding phase's `Status` in
 > [2026-08-29-local-ai-photo-manager.md](superpowers/plans/2026-08-29-local-ai-photo-manager.md).
-> Steps 0–8 are done; Step 9 onward have not been run yet.
+> Steps 0–13 are done; Step 14 onward have not been run yet.
 
 Step 0 — Master project instruction ✅ Done (Phase 0)
 
@@ -539,7 +539,7 @@ user query
 Do not store unnecessary private photo content in logs.
 ```
 
-Step 10 — AI-powered organization
+Step 10 — AI-powered organization ✅ Done (Phase 9)
 
 ```jsx
 This is where your original idea comes back.
@@ -603,7 +603,7 @@ unsupported operations
 Never allow the LLM to execute arbitrary shell commands.
 ```
 
-Step 11 — Undo / operation history
+Step 11 — Undo / operation history ✅ Done (Phase 10)
 
 ```jsx
 This is one of the features I’d definitely include because it demonstrates mature engineering.
@@ -644,7 +644,7 @@ maintain enough information to safely undo successful operations
 Design this as a proper transaction-like workflow even though filesystem operations are not inherently transactional.
 ```
 
-Step 12 — Privacy/security
+Step 12 — Privacy/security ✅ Done (Phase 11)
 
 ```jsx
 This should be a major selling point.
@@ -681,7 +681,7 @@ model versions
 Do not claim something is “fully offline” unless it has actually been verified.
 ```
 
-Step 13 — Performance optimization
+Step 13 — Performance optimization ✅ Done (Phase 12)
 
 ```jsx
 This is particularly important for Android.

@@ -41,7 +41,12 @@ interface PhotoDao {
     )
     suspend fun markFaceDetectionComplete(photoId: Long, at: Long, error: String?)
 
-    @Query("SELECT mediaStoreId, uri FROM photos WHERE contentHash IS NULL")
+    /** Excludes `hashError IS NOT NULL` rows too — otherwise a permanently-undecodable photo
+     * (an image `BitmapFactory` can never decode) gets re-hashed on every single pass forever,
+     * since `contentHash` alone can never become non-null for it. Mirrors the exclusion pattern
+     * `getPhotosNeedingFaceDetection`/`fetchPhotosNeedingSimilarityEmbedding` already use. A
+     * genuinely changed photo still gets retried, because re-indexing nulls both columns out. */
+    @Query("SELECT mediaStoreId, uri FROM photos WHERE contentHash IS NULL AND hashError IS NULL")
     suspend fun getPhotosNeedingHash(): List<HashPendingRow>
 
     @Query(

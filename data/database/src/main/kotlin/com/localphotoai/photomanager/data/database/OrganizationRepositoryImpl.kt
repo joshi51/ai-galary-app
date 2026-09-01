@@ -60,6 +60,7 @@ private fun OrganizationOperation.toEntity(planId: Long) = OrganizationOperation
     reviewStatus = reviewStatus.name,
     executionResult = executionResult?.let { if (it) "SUCCESS" else "FAILURE" },
     executionError = executionError,
+    createdAlbumId = createdAlbumId,
 )
 
 private fun OrganizationPlanEntity.toDomain(operations: List<OrganizationOperationEntity>) = OrganizationPlan(
@@ -81,4 +82,5 @@ private fun OrganizationOperationEntity.toDomain() = OrganizationOperation(
     reviewStatus = ReviewStatus.valueOf(reviewStatus),
     executionResult = executionResult?.let { it == "SUCCESS" },
     executionError = executionError,
+    createdAlbumId = createdAlbumId,
 )

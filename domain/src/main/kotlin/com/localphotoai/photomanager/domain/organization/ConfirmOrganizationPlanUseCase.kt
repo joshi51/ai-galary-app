@@ -21,18 +21,20 @@ class ConfirmOrganizationPlanUseCase(
         val decisionsById = decisions.associateBy { it.operationId }
         for (operation in plan.operations) {
             val decision = decisionsById[operation.id] ?: continue
-            val updated = operation.copy(
+            var updated = operation.copy(
                 reviewStatus = decision.status,
                 destination = decision.editedDestination ?: operation.destination,
                 memberPhotoIds = decision.editedMemberPhotoIds ?: operation.memberPhotoIds,
             )
-            organizationPlanRepository.updateOperation(updated)
 
             if (updated.opType == OperationType.CREATE_ALBUM &&
                 updated.reviewStatus in setOf(ReviewStatus.APPROVED, ReviewStatus.EDITED)
             ) {
-                albumRepository.createAlbum(updated.destination, updated.memberPhotoIds)
+                val albumId = albumRepository.createAlbum(updated.destination, updated.memberPhotoIds)
+                updated = updated.copy(createdAlbumId = albumId)
             }
+
+            organizationPlanRepository.updateOperation(updated)
         }
 
         val refreshed = organizationPlanRepository.fetchPlan(planId)

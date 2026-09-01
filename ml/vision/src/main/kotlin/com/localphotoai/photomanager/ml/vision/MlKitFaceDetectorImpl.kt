@@ -76,7 +76,7 @@ class MlKitFaceDetectorImpl @Inject constructor(
                 BitmapFactory.decodeStream(stream, null, options)
             }
         } catch (t: Throwable) {
-            logger.warn(TAG, "Failed to decode bitmap for $photoUri", t)
+            logger.warn(TAG, "Failed to decode bitmap for photo", t)
             null
         }
     }

@@ -41,6 +41,12 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
+    var showDiagnostics by remember { mutableStateOf(false) }
+    if (showDiagnostics) {
+        DiagnosticsScreen(onBack = { showDiagnostics = false }, modifier = modifier)
+        return
+    }
+
     val themeMode by viewModel.themeMode.collectAsState()
     val modelDownloadState by viewModel.modelDownloadState.collectAsState()
     val llmModelDownloadState by viewModel.llmModelDownloadState.collectAsState()
@@ -56,6 +62,7 @@ fun SettingsScreen(
         savedSearchLocation = savedSearchLocation,
         onSaveSearchLocation = viewModel::onSaveSearchLocation,
         onClearSearchLocation = viewModel::onClearSearchLocation,
+        onOpenDiagnostics = { showDiagnostics = true },
     )
 }
 
@@ -71,6 +78,7 @@ private fun SettingsScreenContent(
     savedSearchLocation: SavedSearchLocation?,
     onSaveSearchLocation: (latitude: Double, longitude: Double, radiusKm: Double) -> Unit,
     onClearSearchLocation: () -> Unit,
+    onOpenDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -126,6 +134,11 @@ private fun SettingsScreenContent(
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
             )
             LlmModelDownloadRow(state = llmModelDownloadState, onDownloadClicked = onDownloadLlmModelClicked)
+            Text(
+                text = "Built with Llama.",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
 
             SearchLocationSection(
                 savedLocation = savedSearchLocation,
@@ -133,17 +146,49 @@ private fun SettingsScreenContent(
                 onClear = onClearSearchLocation,
             )
 
+            PrivacySection(onOpenDiagnostics = onOpenDiagnostics)
+        }
+    }
+}
+
+@Composable
+private fun PrivacySection(onOpenDiagnostics: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 32.dp)) {
+        Text(text = "Privacy", style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = "Verified by this app's Phase 11 privacy audit:",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+        )
+        val facts = listOf(
+            "Your photos are never uploaded — indexing, face detection, and search read them " +
+                "only through Android's MediaStore, in place, on this device.",
+            "Face embeddings (the numbers used to recognize people) are generated on-device " +
+                "and stored only in this app's local database — never transmitted anywhere.",
+            "Natural-language search and photo organization run on a local LLM (llama.cpp), " +
+                "entirely on this device — no query or photo content is ever sent to a server.",
+            "This app has no analytics or telemetry SDK of any kind, so none is running, by " +
+                "default or otherwise.",
+            "The INTERNET permission exists only for the explicit \"Download\" buttons above — " +
+                "every other feature (indexing, faces, search, organization) works with the " +
+                "device fully offline.",
+            "This app's database lives in Android's app-private storage, readable only by this " +
+                "app on a non-rooted device, and is deleted automatically if the app is " +
+                "uninstalled. Automatic cloud/system backup of that storage is disabled for this " +
+                "app. Photo thumbnails in the grid are decoded on demand and held only in " +
+                "memory while visible — nothing is written to a persistent thumbnail cache.",
+            "Error logs never include a photo's filename, path, or content — only counts and " +
+                "non-identifying status codes.",
+        )
+        for (fact in facts) {
             Text(
-                text = "Privacy",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 32.dp),
+                text = "•  $fact",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 6.dp),
             )
-            Text(
-                text = "All photo analysis and AI processing runs on this device. " +
-                    "A detailed privacy breakdown arrives in Phase 11.",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+        }
+        OutlinedButton(onClick = onOpenDiagnostics, modifier = Modifier.padding(top = 8.dp)) {
+            Text("View diagnostics")
         }
     }
 }

@@ -19,7 +19,9 @@ enum class ReviewStatus {
  * MOVE/COPY/RENAME, null for CREATE_FOLDER/CREATE_ALBUM. [destination] is a target path for
  * file operations, or the album name for CREATE_ALBUM. [memberPhotoIds] is populated only for
  * CREATE_ALBUM — one CREATE_ALBUM operation covers every member photo as plan-level detail,
- * not one operation per photo (see the Phase 9 design spec §2).
+ * not one operation per photo (see the Phase 9 design spec §2). [createdAlbumId] is set once a
+ * CREATE_ALBUM operation is confirmed and its album actually created — carries the id downstream
+ * to Phase 10's operation-history/undo recording, which has no other way to learn it.
  */
 data class OrganizationOperation(
     val id: Long = 0,
@@ -32,6 +34,7 @@ data class OrganizationOperation(
     val reviewStatus: ReviewStatus = ReviewStatus.PENDING,
     val executionResult: Boolean? = null,
     val executionError: String? = null,
+    val createdAlbumId: Long? = null,
 )
 
 data class OrganizationPlan(
@@ -53,4 +56,8 @@ interface OrganizationPlanRepository {
 /** Access to the virtual, in-app-only album collection. Implemented in `:data:database` (Room only). */
 interface AlbumRepository {
     suspend fun createAlbum(name: String, photoIds: List<Long>): Long
+
+    /** Undoes a `CREATE_ALBUM` operation. The album is virtual/in-app-only, so this is a plain
+     * Room delete — no filesystem/MediaStore interaction, unlike undoing a MOVE/RENAME/COPY. */
+    suspend fun deleteAlbum(albumId: Long)
 }
