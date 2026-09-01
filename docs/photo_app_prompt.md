@@ -1,7 +1,12 @@
 # photo_app_prompt
 
 Project: Local AI Photo Intelligence & Manager
-Step 0 — Master project instruction
+
+> Progress tracking: each step below is marked against the corresponding phase's `Status` in
+> [2026-08-29-local-ai-photo-manager.md](superpowers/plans/2026-08-29-local-ai-photo-manager.md).
+> Steps 0–8 are done; Step 9 onward have not been run yet.
+
+Step 0 — Master project instruction ✅ Done (Phase 0)
 
 Give Claude Code this first and don’t ask it to implement anything yet.
 
@@ -158,7 +163,7 @@ Produce a detailed implementation plan.
 Wait for my approval before implementing Phase 1.
 ```
 
-Step 1 — Architecture
+Step 1 — Architecture ✅ Done (Phase 0.5)
 
 After Claude gives you the architecture, give it:
 
@@ -194,7 +199,7 @@ Do not implement anything yet.
 At the end, identify architectural decisions that should be locked before development begins and any decisions that should deliberately remain replaceable.
 ```
 
-Step 2 — Build the basic Android shell
+Step 2 — Build the basic Android shell ✅ Done (Phase 1)
 
 ```jsx
 Now start coding.
@@ -237,7 +242,7 @@ document the architecture
 Do not move to photo indexing yet.
 ```
 
-Step 3 — Photo indexing
+Step 3 — Photo indexing ✅ Done (Phase 2)
 
 This is your first genuinely useful feature.
 
@@ -279,7 +284,7 @@ Add unit/integration tests for the indexing layer.
 Measure and report approximate indexing performance on the test device/emulator.
 ```
 
-Step 4 — Face detection
+Step 4 — Face detection ✅ Done (Phase 3)
 
 ```jsx
 Now introduce computer vision.
@@ -318,7 +323,7 @@ background processing
 cancellation
 ```
 
-Step 5 — Face embeddings
+Step 5 — Face embeddings ✅ Done (Phase 4)
 
 ```jsx
 This is the important ML step.
@@ -366,7 +371,7 @@ Document the model and its license.
 Do not implement automatic person grouping yet.
 ```
 
-Step 6 — Automatically discover people
+Step 6 — Automatically discover people ✅ Done (Phase 5)
 
 ```jsx
 Now things get exciting.
@@ -408,7 +413,7 @@ and:
 Add tests for clustering and merge/split behavior.
 ```
 
-Step 7 — Search by people
+Step 7 — Search by people ✅ Done (Phase 6)
 
 ```jsx
 Implement Phase 6: people-based photo search.
@@ -440,7 +445,7 @@ Add appropriate indexes.
 Test with a simulated large dataset.
 ```
 
-Step 8 — Duplicate and similar-photo detection
+Step 8 — Duplicate and similar-photo detection ✅ Done (Phase 7)
 
 ```jsx
 This gives the app another strong capability.
@@ -474,7 +479,7 @@ Deletion must always require explicit user confirmation.
 Document memory/performance implications.
 ```
 
-Step 9 — Natural-language AI
+Step 9 — Natural-language AI ✅ Done
 
 ```jsx
 Only now should you introduce the LLM.

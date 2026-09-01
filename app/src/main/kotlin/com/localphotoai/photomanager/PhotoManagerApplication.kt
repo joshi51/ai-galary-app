@@ -1,6 +1,8 @@
 package com.localphotoai.photomanager
 
 import android.app.Application
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import com.localphotoai.photomanager.core.common.Logger
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -8,10 +10,18 @@ import javax.inject.Inject
 private const val TAG = "PhotoManagerApplication"
 
 @HiltAndroidApp
-class PhotoManagerApplication : Application() {
+class PhotoManagerApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var logger: Logger
+
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 
     override fun onCreate() {
         super.onCreate()

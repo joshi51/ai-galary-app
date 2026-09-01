@@ -8,4 +8,9 @@ import kotlinx.coroutines.flow.Flow
 interface SettingsRepository {
     fun observeThemeMode(): Flow<ThemeMode>
     suspend fun setThemeMode(mode: ThemeMode)
+
+    /** Null if the user hasn't saved a search location yet. */
+    fun observeSavedSearchLocation(): Flow<SavedSearchLocation?>
+    suspend fun setSavedSearchLocation(latitude: Double, longitude: Double, radiusKm: Double)
+    suspend fun clearSavedSearchLocation()
 }

@@ -38,11 +38,15 @@ dependencies {
     implementation(project(":core:ui"))
     implementation(project(":domain"))
     implementation(project(":data:preferences"))
+    implementation(project(":data:database"))
+    implementation(project(":data:media"))
     implementation(project(":feature:home"))
     implementation(project(":feature:photos"))
     implementation(project(":feature:people"))
     implementation(project(":feature:search"))
     implementation(project(":feature:settings"))
+    implementation(project(":llm:runtime"))
+    implementation(project(":fsops"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -60,6 +64,10 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
     testImplementation(libs.junit)
 }
